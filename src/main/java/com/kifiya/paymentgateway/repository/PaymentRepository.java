@@ -23,4 +23,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Query("SELECT p FROM Payment p WHERE p.status = :status AND p.updatedAt < :before")
     List<Payment> findStalePayments(@Param("status") PaymentStatus status, 
                                    @Param("before") LocalDateTime before);
+    
+    // Add this method for metrics
+    long countByStatus(PaymentStatus status);
 }

@@ -13,6 +13,14 @@
             <span class="navbar-brand mb-0 h1">
                 <i class="fas fa-credit-card me-2"></i>Kifiya Payment Gateway
             </span>
+            <div>
+                <a href="/dashboard/metrics" class="btn btn-outline-light btn-sm me-2">
+                    <i class="fas fa-chart-line"></i> Metrics
+                </a>
+                <a href="/swagger-ui/index.html" class="btn btn-outline-light btn-sm" target="_blank">
+                    <i class="fas fa-book"></i> API Docs
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -72,6 +80,25 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Metrics Link -->
+            <div class="col-md-3 mb-4">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6>Metrics</h6>
+                                <a href="/dashboard/metrics" class="text-white">
+                                    <i class="fas fa-chart-bar"></i> View Metrics
+                                </a>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-tachometer-alt fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Recent Payments Table -->
@@ -112,8 +139,48 @@
                                         </td>
                                         <td th:text="${#temporals.format(payment.createdAt, 'yyyy-MM-dd HH:mm')}">2024-01-15 10:30</td>
                                     </tr>
+                                    <tr th:if="${#lists.isEmpty(recentPayments)}">
+                                        <td colspan="7" class="text-center text-muted">
+                                            No payments found. Create your first payment using the API!
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-2">
+                                <a href="/swagger-ui/index.html" class="btn btn-primary w-100" target="_blank">
+                                    <i class="fas fa-code me-1"></i> Test API
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <a href="/actuator/metrics" class="btn btn-info w-100" target="_blank">
+                                    <i class="fas fa-list me-1"></i> Raw Metrics
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <a href="/actuator/health" class="btn btn-success w-100" target="_blank">
+                                    <i class="fas fa-heartbeat me-1"></i> Health Check
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <a href="/dashboard/metrics" class="btn btn-warning w-100">
+                                    <i class="fas fa-chart-line me-1"></i> Live Metrics
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
