@@ -1,6 +1,7 @@
 package com.kifiya.paymentgateway.controller;
 
 import com.kifiya.paymentgateway.domain.Payment;
+import com.kifiya.paymentgateway.service.PaymentProcessor;
 import com.kifiya.paymentgateway.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,10 +34,13 @@ public class PaymentController {
     private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
     
     private final PaymentService paymentService;
+    private final PaymentProcessor paymentProcessor;
     
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService, PaymentProcessor paymentProcessor) {
         this.paymentService = paymentService;
+        this.paymentProcessor = paymentProcessor;
     }
+    
     
     @Operation(
         summary = "Create a new payment",
@@ -125,67 +129,7 @@ public class PaymentController {
     })
     @PostMapping
     public ResponseEntity<PaymentResponse> createPayment(
-            @Valid @RequestBody 
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                description = "Payment creation details",
-                content = @Content(
-                    schema = @Schema(implementation = CreatePaymentRequest.class),
-                    examples = {
-                        @ExampleObject(
-                            name = "Basic Payment",
-                            description = "A simple payment example",
-                            value = """
-                            {
-                              "amount": 99.99,
-                              "currency": "USD",
-                              "merchantId": "merchant_123",
-                              "customerId": "customer_456",
-                              "description": "Premium subscription payment"
-                            }
-                            """
-                        ),
-                        @ExampleObject(
-                            name = "Large Payment",
-                            description = "High-value payment example",
-                            value = """
-                            {
-                              "amount": 2500.00,
-                              "currency": "EUR",
-                              "merchantId": "enterprise_merchant",
-                              "customerId": "vip_customer",
-                              "description": "Enterprise software license"
-                            }
-                            """
-                        ),
-                        @ExampleObject(
-                            name = "International Payment",
-                            description = "Multi-currency payment example",
-                            value = """
-                            {
-                              "amount": 150.75,
-                              "currency": "GBP",
-                              "merchantId": "uk_retailer",
-                              "customerId": "international_buyer",
-                              "description": "International purchase"
-                            }
-                            """
-                        )
-                    }
-                )
-            )
-            CreatePaymentRequest request,
-            
-            @Parameter(
-                description = """
-                    Unique identifier to prevent duplicate payments. This key should be:
-                    - Unique for each payment attempt
-                    - Consistent for retries of the same payment
-                    - Maximum 255 characters
-                    - Recommended format: 'payment_{timestamp}_{sequence}' or similar
-                    """,
-                example = "payment_2024_001",
-                required = true
-            )
+            @Valid @RequestBody CreatePaymentRequest request,
             @RequestHeader("X-Idempotency-Key") String idempotencyKey) {
         
         logger.info("Creating payment with idempotency key: {}", idempotencyKey);
@@ -198,6 +142,10 @@ public class PaymentController {
             request.customerId(),
             request.description()
         );
+        
+        // Add this line to trigger immediate processing
+        logger.info("Triggering immediate processing for payment: {}", payment.getId());
+        paymentProcessor.processPaymentImmediately(payment.getId());
         
         PaymentResponse response = PaymentResponse.from(payment);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

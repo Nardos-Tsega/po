@@ -122,4 +122,13 @@ public class Payment {
         this.retryCount++;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
 }

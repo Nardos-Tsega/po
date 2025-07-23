@@ -4,6 +4,7 @@ import com.kifiya.paymentgateway.domain.Payment;
 import com.kifiya.paymentgateway.domain.PaymentStatus;
 import com.kifiya.paymentgateway.exception.DuplicatePaymentException;
 import com.kifiya.paymentgateway.exception.PaymentNotFoundException;
+import com.kifiya.paymentgateway.provider.PaymentProvider;
 import com.kifiya.paymentgateway.repository.PaymentRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
@@ -29,6 +30,7 @@ public class PaymentService {
     
     private final PaymentRepository paymentRepository;
     private final MeterRegistry meterRegistry;
+    private final PaymentProvider paymentProvider; // Added PaymentProvider
     
     // Metrics
     private final Counter paymentsCreated;
@@ -38,9 +40,13 @@ public class PaymentService {
     private final Timer paymentProcessingTime;
     private final AtomicLong pendingPaymentsCount = new AtomicLong(0);
     
-    public PaymentService(PaymentRepository paymentRepository, MeterRegistry meterRegistry) {
+    // Updated constructor to include PaymentProvider
+    public PaymentService(PaymentRepository paymentRepository, 
+                         MeterRegistry meterRegistry,
+                         PaymentProvider paymentProvider) {
         this.paymentRepository = paymentRepository;
         this.meterRegistry = meterRegistry;
+        this.paymentProvider = paymentProvider;
         
         // Initialize counters
         this.paymentsCreated = Counter.builder("payments.created")
@@ -68,7 +74,7 @@ public class PaymentService {
             .tag("service", "payment-gateway")
             .register(meterRegistry);
         
-        // Initialize gauges - FIXED: Using the correct Gauge.builder syntax
+        // Initialize gauges
         Gauge.builder("payments.pending_count", this, PaymentService::getPendingPaymentsCountAsDouble)
             .description("Current number of pending payments")
             .tag("service", "payment-gateway")
@@ -142,12 +148,97 @@ public class PaymentService {
         return paymentRepository.findStalePayments(PaymentStatus.PROCESSING, staleThreshold);
     }
     
-    // Metric calculation methods - FIXED: Added method that returns double for Gauge
+    // NEW METHOD: Process payment with provider
+    @Transactional
+    public void processPaymentWithProvider(UUID paymentId) {
+        Optional<Payment> optionalPayment = paymentRepository.findById(paymentId);
+        if (optionalPayment.isEmpty()) {
+            logger.error("Payment not found: {}", paymentId);
+            return;
+        }
+        
+        Payment payment = optionalPayment.get();
+        
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            logger.warn("Payment {} is not in PENDING status: {}", paymentId, payment.getStatus());
+            return;
+        }
+        
+        // Update status to PROCESSING
+        payment.setStatus(PaymentStatus.PROCESSING);
+        payment.setUpdatedAt(LocalDateTime.now());
+        paymentRepository.save(payment);
+        
+        Timer.Sample sample = Timer.start(meterRegistry);
+        
+        try {
+            // Create provider request
+            PaymentProvider.PaymentRequest providerRequest = new PaymentProvider.PaymentRequest(
+                payment.getId().toString(),
+                payment.getAmount(),
+                payment.getCurrency(),
+                payment.getMerchantId(),
+                payment.getCustomerId(),
+                payment.getDescription()
+            );
+            
+            // Process with provider
+            PaymentProvider.PaymentResult result = paymentProvider.processPayment(providerRequest);
+            
+            if (result.success()) {
+                // Payment succeeded
+                payment.setStatus(PaymentStatus.COMPLETED);
+                payment.setProviderTransactionId(result.providerTransactionId());
+                payment.setCompletedAt(LocalDateTime.now());
+                payment.setUpdatedAt(LocalDateTime.now());
+                
+                logger.info("Payment {} completed successfully with provider transaction: {}", 
+                           paymentId, result.providerTransactionId());
+                
+                // Record metrics
+                recordPaymentCompleted(payment);
+                
+            } else {
+                // Payment failed
+                payment.setFailureReason(result.errorMessage());
+                payment.setRetryCount(payment.getRetryCount() + 1);
+                payment.setUpdatedAt(LocalDateTime.now());
+                
+                if (result.isRetryable() && payment.getRetryCount() < MAX_RETRY_COUNT) {
+                    // Mark for retry
+                    payment.setStatus(PaymentStatus.PENDING);
+                    logger.warn("Payment {} failed but will retry: {} (attempt {})", 
+                               paymentId, result.errorMessage(), payment.getRetryCount());
+                } else {
+                    // Permanent failure
+                    payment.setStatus(PaymentStatus.FAILED);
+                    logger.error("Payment {} permanently failed: {}", 
+                                paymentId, result.errorMessage());
+                    
+                    // Record metrics
+                    recordPaymentFailed(payment);
+                }
+            }
+            
+            paymentRepository.save(payment);
+            
+        } catch (Exception e) {
+            logger.error("Unexpected error processing payment {}: ", paymentId, e);
+            payment.setStatus(PaymentStatus.FAILED);
+            payment.setFailureReason("Internal processing error");
+            payment.setUpdatedAt(LocalDateTime.now());
+            recordPaymentFailed(payment);
+            paymentRepository.save(payment);
+        } finally {
+            sample.stop(paymentProcessingTime);
+        }
+    }
+    
+    // Metric calculation methods
     private long getPendingPaymentsCount() {
         return paymentRepository.countByStatus(PaymentStatus.PENDING);
     }
     
-    // FIXED: New method that returns double for Gauge compatibility
     private double getPendingPaymentsCountAsDouble() {
         return (double) getPendingPaymentsCount();
     }
