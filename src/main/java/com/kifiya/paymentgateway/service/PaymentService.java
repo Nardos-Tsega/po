@@ -30,9 +30,8 @@ public class PaymentService {
     
     private final PaymentRepository paymentRepository;
     private final MeterRegistry meterRegistry;
-    private final PaymentProvider paymentProvider; // Added PaymentProvider
+    private final PaymentProvider paymentProvider; 
     
-    // Metrics
     private final Counter paymentsCreated;
     private final Counter paymentsCompleted;
     private final Counter paymentsFailed;
@@ -40,7 +39,6 @@ public class PaymentService {
     private final Timer paymentProcessingTime;
     private final AtomicLong pendingPaymentsCount = new AtomicLong(0);
     
-    // Updated constructor to include PaymentProvider
     public PaymentService(PaymentRepository paymentRepository, 
                          MeterRegistry meterRegistry,
                          PaymentProvider paymentProvider) {
@@ -48,7 +46,6 @@ public class PaymentService {
         this.meterRegistry = meterRegistry;
         this.paymentProvider = paymentProvider;
         
-        // Initialize counters
         this.paymentsCreated = Counter.builder("payments.created")
             .description("Number of payments created")
             .tag("service", "payment-gateway")
@@ -148,7 +145,6 @@ public class PaymentService {
         return paymentRepository.findStalePayments(PaymentStatus.PROCESSING, staleThreshold);
     }
     
-    // NEW METHOD: Process payment with provider
     @Transactional
     public void processPaymentWithProvider(UUID paymentId) {
         Optional<Payment> optionalPayment = paymentRepository.findById(paymentId);

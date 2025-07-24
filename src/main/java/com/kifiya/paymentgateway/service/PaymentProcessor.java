@@ -1,7 +1,6 @@
 package com.kifiya.paymentgateway.service;
 
 import com.kifiya.paymentgateway.domain.Payment;
-import com.kifiya.paymentgateway.service.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

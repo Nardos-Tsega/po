@@ -17,9 +17,8 @@ import java.util.List;
 public class DashboardController {
     
     private final PaymentRepository paymentRepository;
-    private final MeterRegistry meterRegistry; // Add this field
+    private final MeterRegistry meterRegistry; 
     
-    // Updated constructor to inject MeterRegistry
     public DashboardController(PaymentRepository paymentRepository, MeterRegistry meterRegistry) {
         this.paymentRepository = paymentRepository;
         this.meterRegistry = meterRegistry;
@@ -41,7 +40,7 @@ public class DashboardController {
         return "dashboard";
     }
 
-    @GetMapping("/dashboard/metrics")  // Fixed the path
+    @GetMapping("/dashboard/metrics") 
     public String metricsPage(Model model) {
         // Get metrics data
         Counter created = meterRegistry.find("payments.created").counter();

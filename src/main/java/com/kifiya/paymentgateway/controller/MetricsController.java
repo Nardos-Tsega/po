@@ -1,4 +1,3 @@
-// File: src/main/java/com/kifiya/paymentgateway/controller/MetricsController.java
 package com.kifiya.paymentgateway.controller;
 
 import io.micrometer.core.instrument.Counter;
