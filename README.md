@@ -66,8 +66,6 @@ graph TB
 
 ---
 
-## 🔄 **Implemented Payment Lifecycle**
-
 **Real Payment Flow** (as verified in logs):
 
 ```mermaid
