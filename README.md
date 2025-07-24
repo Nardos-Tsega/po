@@ -64,61 +64,6 @@ graph TB
 ![Swagger UI](screenshots/swagger-ui.png)
 *Complete OpenAPI 3.0 documentation with interactive testing capabilities. All endpoints documented with request/response examples, validation rules, and live testing interface.*
 
----
-
-**Real Payment Flow** (as verified in logs):
-
-```mermaid
-sequenceDiagram
-    participant CLIENT as Client
-    participant CONTROLLER as PaymentController
-    participant SERVICE as PaymentService
-    participant DB as PostgreSQL
-    participant SCHEDULER as PaymentProcessor
-    participant LIMITER as RateLimiter
-    participant PROVIDER as MockProvider
-    
-    CLIENT->>CONTROLLER: POST /api/v1/payments
-    CONTROLLER->>SERVICE: createPayment()
-    SERVICE->>DB: Save PENDING payment
-    SERVICE-->>CONTROLLER: Payment created
-    CONTROLLER->>SCHEDULER: processPaymentImmediately()
-    CONTROLLER-->>CLIENT: 201 Created
-    
-    Note over SCHEDULER: Every 5 seconds OR immediate trigger
-    SCHEDULER->>SERVICE: getPendingPayments()
-    SERVICE-->>SCHEDULER: List of pending payments
-    
-    loop For each pending payment
-        SCHEDULER->>LIMITER: tryAcquire() [2 TPS limit]
-        alt Rate limit OK
-            LIMITER-->>SCHEDULER: true
-            SCHEDULER->>SERVICE: processPaymentWithProvider()
-            SERVICE->>DB: Update status to PROCESSING
-            SERVICE->>PROVIDER: processPayment()
-            
-            alt Payment Success (92%)
-                PROVIDER-->>SERVICE: Success + TransactionId
-                SERVICE->>DB: Update to COMPLETED
-                SERVICE->>SERVICE: recordPaymentCompleted()
-            else Payment Failure (8%)
-                PROVIDER-->>SERVICE: Failure + Error
-                alt Retryable (5%)
-                    SERVICE->>DB: Reset to PENDING (if retries < 3)
-                else Permanent (3%)
-                    SERVICE->>DB: Update to FAILED
-                    SERVICE->>SERVICE: recordPaymentFailed()
-                end
-            end
-        else Rate limit exceeded
-            LIMITER-->>SCHEDULER: false
-            Note over SCHEDULER: Skip, will retry in next cycle
-        end
-    end
-```
-
----
-
 ## 🧠 **Core Architectural Solutions**
 
 ### 1. **Idempotency Protection** ✅ **IMPLEMENTED**
