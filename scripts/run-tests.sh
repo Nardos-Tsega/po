@@ -1,5 +1,3 @@
-# File: scripts/run-tests.sh
-
 echo "🧪 Running Payment Gateway Test Suite"
 echo "======================================"
 
